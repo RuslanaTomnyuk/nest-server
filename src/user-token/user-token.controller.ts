@@ -17,6 +17,8 @@ export class UserTokenController {
 
   @Post()
   create(@Body() createUserTokenDto: CreateUserTokenDto) {
+    console.log('userToken controller', createUserTokenDto);
+
     return this.userTokenService.create(createUserTokenDto);
   }
 
@@ -26,20 +28,20 @@ export class UserTokenController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userTokenService.findOne(+id);
+  findOne(@Param('id') id: number) {
+    return this.userTokenService.findOne(id);
   }
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
+    @Param('id') id: number,
     @Body() updateUserTokenDto: UpdateUserTokenDto,
   ) {
-    return this.userTokenService.update(+id, updateUserTokenDto);
+    return this.userTokenService.update(id, updateUserTokenDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userTokenService.remove(+id);
+  remove(@Param('id') id: number) {
+    return this.userTokenService.remove(id);
   }
 }

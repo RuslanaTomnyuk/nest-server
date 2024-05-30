@@ -1,11 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { CreateUserTokenDto } from './dto/create-user-token.dto';
 import { UpdateUserTokenDto } from './dto/update-user-token.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { UserToken } from './entities/user-token.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class UserTokenService {
+  constructor(
+    @InjectRepository(UserToken)
+    private readonly userTokenRepository: Repository<UserToken>,
+  ) {}
   create(createUserTokenDto: CreateUserTokenDto) {
-    return 'This action adds a new userToken';
+    return this.userTokenRepository.save(createUserTokenDto);
   }
 
   findAll() {
@@ -17,7 +24,7 @@ export class UserTokenService {
   }
 
   update(id: number, updateUserTokenDto: UpdateUserTokenDto) {
-    return `This action updates a #${id} userToken`;
+    return this.userTokenRepository.update(id, { ...updateUserTokenDto });
   }
 
   remove(id: number) {

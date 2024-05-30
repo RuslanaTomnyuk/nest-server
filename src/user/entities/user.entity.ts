@@ -21,9 +21,6 @@ export class User {
   @Column()
   password: string;
 
-  @Column()
-  confirmPassword: string;
-
   @Column({ nullable: true })
   passwordChangeAt: Date;
 
