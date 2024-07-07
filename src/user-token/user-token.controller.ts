@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { UserTokenService } from './user-token.service';
 import { CreateUserTokenDto } from './dto/create-user-token.dto';
@@ -17,8 +18,6 @@ export class UserTokenController {
 
   @Post()
   create(@Body() createUserTokenDto: CreateUserTokenDto) {
-    console.log('userToken controller', createUserTokenDto);
-
     return this.userTokenService.create(createUserTokenDto);
   }
 
@@ -28,8 +27,8 @@ export class UserTokenController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: number) {
-    return this.userTokenService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.userTokenService.findOneById(id);
   }
 
   @Patch(':id')

@@ -1,17 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-// import { AppController } from './app.controller';
-// import { AppService } from './app.service';
-import { UserModule } from './user/user.module';
+
 import { User } from './user/entities/user.entity';
 import { UserTokenModule } from './user-token/user-token.module';
 import { JobPositionModule } from './job-position/job-position.module';
+import { UserModule } from './user/user.module';
 import { RoleModule } from './role/role.module';
 import { AuthModule } from './auth/auth.module';
-import { APP_GUARD } from '@nestjs/core';
-import { AccessTokenGuard } from './guards/access-token.guard';
-import { JwtModule } from '@nestjs/jwt';
+
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -32,14 +31,8 @@ import { JwtModule } from '@nestjs/jwt';
     JobPositionModule,
     RoleModule,
     AuthModule,
-    // JwtModule,
   ],
-  // controllers: [AppController],
-  providers: [
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: AccessTokenGuard,
-    // },
-  ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}

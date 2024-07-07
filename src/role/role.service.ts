@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Role } from './entities/role.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Role } from './entities/role.entity';
 
 @Injectable()
 export class RoleService {
@@ -15,7 +15,7 @@ export class RoleService {
   }
 
   findAllRoles() {
-    return `This action returns all userRoles`;
+    return this.roleRepository.find();
   }
 
   findUserRole(role: string) {
@@ -23,7 +23,7 @@ export class RoleService {
   }
 
   update(id: number, updateUserRoleDto: any) {
-    return `This action updates a #${id} userToken`;
+    return this.roleRepository.update(id, updateUserRoleDto);
   }
 
   remove(id: number) {

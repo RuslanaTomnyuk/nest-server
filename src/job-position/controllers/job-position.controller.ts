@@ -6,11 +6,14 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 import { JobPositionService } from '../services/job-position.service';
 import { CreateJobPositionDto } from '../dto/create-job-position.dto';
 import { UpdateJobPositionDto } from '../dto/update-job-position.dto';
+import { AccessTokenGuard } from 'src/guards/access-token.guard';
 
+@UseGuards(AccessTokenGuard)
 @Controller('job-list')
 export class JobPositionController {
   constructor(private readonly jobPositionService: JobPositionService) {}
@@ -20,7 +23,6 @@ export class JobPositionController {
     return this.jobPositionService.create(createJobPositionDto);
   }
 
-  // @UseGuards(AccessTokenGuard)
   @Get()
   async findJobList() {
     return await this.jobPositionService.findJobList();

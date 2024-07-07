@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import * as cookieParser from 'cookie-parser';
+import cookieParser from 'cookie-parser';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
@@ -11,6 +11,7 @@ async function bootstrap() {
     // }
   );
   app.use(cookieParser());
+  app.useGlobalPipes(new ValidationPipe());
   // app.useGlobalPipes(new ValidationPipe({ whitelist: true })); // returns empty payload
   app.enableCors({
     credentials: true,

@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { JobPositionService } from './services/job-position.service';
-import { JobPositionController } from './controllers/job-position.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { JobPosition } from './entities/job-position.entity';
 import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { JobPositionController } from './controllers/job-position.controller';
+import { JobPositionService } from './services/job-position.service';
+import { JobPosition } from './entities/job-position.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([JobPosition]), JwtModule],
