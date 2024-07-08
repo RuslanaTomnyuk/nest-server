@@ -1,34 +1,25 @@
-import {
-  MiddlewareConsumer,
-  Module,
-  NestModule,
-  RequestMethod,
-} from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { UserService } from './services/user.service';
 import { UserController } from './controllers/user.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { AuthMiddleware } from 'src/auth/middlewares/auth.middleware';
 import { RoleService } from 'src/role/role.service';
 import { RoleModule } from 'src/role/role.module';
 import { JwtModule } from '@nestjs/jwt';
 import { Role } from 'src/role/entities/role.entity';
+import { MailService } from 'src/auth/services/nodemailer.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Role]),
-    JwtModule.register({
-      // global: true,
-      secret: process.env.ACCESS_TOKEN_SECRET,
-      signOptions: { expiresIn: '1h' },
-    }),
+    JwtModule.register({}),
     RoleModule,
   ],
   controllers: [UserController],
-  providers: [UserService, RoleService],
+  providers: [UserService, RoleService, MailService],
   exports: [UserService, TypeOrmModule, RoleService],
 })
-export class UserModule { }
+export class UserModule {}
 
 // middlewares
 // export class UserModule implements NestModule {

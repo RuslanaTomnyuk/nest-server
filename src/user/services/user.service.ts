@@ -7,18 +7,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
-
 import { InjectRepository } from '@nestjs/typeorm';
+
+import bcrypt from 'bcrypt';
+
+import { MailService } from 'src/auth/services/nodemailer.service';
+
+import { CreateUserDto } from '../dto/create-user.dto';
+import { ChangePasswordDto } from '../../auth/dto/change-password.dto';
+
+import { Role } from 'src/role/entities/role.entity';
 import { User } from '../entities/user.entity';
+
 import {
-  CreateUserParams,
   UpdateUserParams,
   UpdateUserProfileParams,
 } from 'src/interfaces/dtoClasses';
-import { CreateUserDto } from '../dto/create-user.dto';
-import { Role } from 'src/role/entities/role.entity';
-import { RoleService } from 'src/role/role.service';
 
 @Injectable()
 export class UserService {
@@ -27,16 +31,14 @@ export class UserService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
-    // private readonly roleService: RoleService,
+    private mailService: MailService,
   ) {}
 
   async createUser(userDetails: CreateUserDto, userRole: Role) {
     const { username, email, password, confirmPassword } = userDetails;
 
     if (!username || !email || !password || !confirmPassword || !userRole) {
-      // TODO
-      // change the message error to required
-      throw new BadRequestException('All fields should be filled');
+      throw new BadRequestException('All fields are required');
     }
 
     const userExists = await this.findUserByEmail(email);
@@ -68,8 +70,24 @@ export class UserService {
 
     await this.userRepository.save(newUser);
 
+    try {
+      await this.mailService.createUserNotification(
+        userDetails.username,
+        userDetails.email,
+      );
+    } catch (error) {
+      console.log('Error while sending email', error);
+    }
+
     const { password: _, ...userData } = newUser;
-    return userData;
+
+    return {
+      userData,
+      status: 201,
+      success: true,
+      message:
+        'Thank you for registration with us. Your account has been successfully created.',
+    };
   }
 
   async findAllUsers() {
@@ -91,14 +109,11 @@ export class UserService {
   }
 
   async findUserByEmail(email: string) {
-    // const userWithRole = await this.userRepository.find({
-    //   relations: {
-    //     roles: true,
-    //   },
-    // });
-    // console.log('userWithRole', userWithRole);
-
     return await this.userRepository.findOneBy({ email });
+  }
+
+  async saveUser(user: User) {
+    return await this.userRepository.save(user);
   }
 
   async updateUser(id: number, updateUserDetails: UpdateUserParams) {
@@ -115,7 +130,6 @@ export class UserService {
       const emailExists = await this.userRepository.findOneBy({
         email: updateUserDetails.email,
       });
-      console.log('emailExists', emailExists);
 
       if (emailExists) {
         throw new HttpException(
@@ -131,13 +145,16 @@ export class UserService {
   async updateUserProfile(
     user: User,
     updateUserDetails: UpdateUserProfileParams,
+    res,
   ) {
     if (
       !updateUserDetails.username ||
       !updateUserDetails.email ||
       !updateUserDetails.password
     ) {
-      throw new BadRequestException('Username and password are required.');
+      throw new BadRequestException(
+        'Username, email and password are required.',
+      );
     }
     const userExists = await this.findUserById(user.id);
 
@@ -151,6 +168,13 @@ export class UserService {
       updateUserDetails.password,
       userExists.password,
     );
+
+    if (!isPasswordValid) {
+      throw new HttpException(
+        'The current password you provided is not valid!',
+        HttpStatus.FORBIDDEN,
+      );
+    }
 
     if (isPasswordValid && updateUserDetails.email !== userExists.email) {
       const emailExists = await this.userRepository.findOneBy({
@@ -170,17 +194,89 @@ export class UserService {
       +process.env.SALT,
     );
 
-    return (
+    const role = 'Admin';
+
+    const hasEmailChanged = updateUserDetails.email !== userExists.email;
+
+    if (role === 'Admin') {
       isPasswordValid &&
-      (await this.userRepository.update(
-        { id: user.id },
-        {
-          password: hashedPassword,
-          username: updateUserDetails.username,
-          email: updateUserDetails.email,
-        },
-      ))
+        (await this.userRepository.update(
+          { id: user.id },
+          {
+            password: hashedPassword,
+            username: updateUserDetails.username,
+            email: updateUserDetails.email,
+          },
+        ));
+
+      try {
+        if (hasEmailChanged) {
+          await this.mailService.changeEmailNotification(
+            updateUserDetails.username,
+            updateUserDetails.email,
+          );
+        }
+      } catch (error) {
+        console.log('Error while sending email', error);
+      }
+
+      res.status(200).json({
+        status: 200,
+        error: false,
+        message: 'User updated Successfully',
+      });
+    } else {
+      throw new HttpException(
+        'Forbidden: Only Admin users can update the user!',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+  }
+
+  async changePassword(user: User, changePasswordDto: ChangePasswordDto) {
+    const { currentPassword, password } = changePasswordDto;
+
+    const userExists = await this.findUserById(user.id);
+
+    if (!userExists) {
+      throw new HttpException(
+        'We could not find the user with a given email',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(
+      currentPassword,
+      userExists.password,
     );
+
+    if (!isCurrentPasswordValid) {
+      throw new HttpException(
+        'The current password you provided is not valid!',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const hashNewPassword = await bcrypt.hash(password, +process.env.SALT);
+
+    const role = 'Admin';
+    if (role === 'Admin') {
+      isCurrentPasswordValid &&
+        (await this.userRepository.update(
+          { id: user.id },
+          {
+            password: hashNewPassword,
+            email: user.email,
+          },
+        ));
+
+      throw new HttpException('User updated Successfully', HttpStatus.CREATED);
+    } else {
+      throw new HttpException(
+        'Forbidden: Only Admin users can update the user!',
+        HttpStatus.FORBIDDEN,
+      );
+    }
   }
 
   async removeUser(id: number) {

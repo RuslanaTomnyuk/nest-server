@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
 import { CreateUserTokenDto } from './dto/create-user-token.dto';
 import { UpdateUserTokenDto } from './dto/update-user-token.dto';
-import { InjectRepository } from '@nestjs/typeorm';
 import { UserToken } from './entities/user-token.entity';
-import { Repository } from 'typeorm';
 
 @Injectable()
 export class UserTokenService {
@@ -11,16 +12,21 @@ export class UserTokenService {
     @InjectRepository(UserToken)
     private readonly userTokenRepository: Repository<UserToken>,
   ) {}
+
   create(createUserTokenDto: CreateUserTokenDto) {
     return this.userTokenRepository.save(createUserTokenDto);
   }
 
   findAll() {
-    return `This action returns all userToken`;
+    return this.userTokenRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} userToken`;
+  findOneById(id: number) {
+    return this.userTokenRepository.findOneBy({ userId: id });
+  }
+
+  findOneBy(token: string) {
+    return this.userTokenRepository.findOneBy({ token });
   }
 
   update(id: number, updateUserTokenDto: UpdateUserTokenDto) {
@@ -28,6 +34,6 @@ export class UserTokenService {
   }
 
   remove(id: number) {
-    return `This action removes a #${id} userToken`;
+    return this.userTokenRepository.delete(id);
   }
 }

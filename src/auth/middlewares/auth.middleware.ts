@@ -5,21 +5,15 @@ import { NextFunction } from 'express';
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
   async use(req, res, next: NextFunction) {
-    console.log('middleware', req.headers, res.status);
-    // try {
     const [type, accessToken] = req.headers.authorization?.split(' ') ?? [];
     type === 'Bearer' ? accessToken : undefined;
 
-    // const accessToken = req.header('Authorization')?.replace('Bearer ', '');
     if (!accessToken) {
       return res.status(403).send({
         success: false,
         error: 'No Authentication Token Provided.',
       });
     }
-
-    console.log('accessToken', accessToken);
-    // console.log('authorization, token', authorization, token);
 
     // const decodedToken: any = jwt.verify(
     //   accessToken,

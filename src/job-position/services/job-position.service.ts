@@ -1,9 +1,10 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+
 import { CreateJobPositionDto } from '../dto/create-job-position.dto';
 import { UpdateJobPositionDto } from '../dto/update-job-position.dto';
-import { InjectRepository } from '@nestjs/typeorm';
 import { JobPosition } from '../entities/job-position.entity';
-import { Repository } from 'typeorm';
 
 @Injectable()
 export class JobPositionService {
@@ -12,8 +13,8 @@ export class JobPositionService {
     private jobPositionRepository: Repository<JobPosition>,
   ) {}
 
-  create(createJobPositionDto: CreateJobPositionDto) {
-    return 'This action adds a new jobPosition';
+  async create(createJobPositionDto: CreateJobPositionDto) {
+    return await this.jobPositionRepository.create(createJobPositionDto);
   }
 
   async findJobList() {
@@ -34,11 +35,14 @@ export class JobPositionService {
     }
   }
 
-  updateJobPosition(id: number, updateJobPositionDto: UpdateJobPositionDto) {
-    return `This action updates a #${id} jobPosition`;
+  async updateJobPosition(
+    id: number,
+    updateJobPositionDto: UpdateJobPositionDto,
+  ) {
+    return await this.jobPositionRepository.update(id, updateJobPositionDto);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} jobPosition`;
+  async remove(id: number) {
+    return await this.jobPositionRepository.delete(id);
   }
 }
