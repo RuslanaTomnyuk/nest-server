@@ -11,6 +11,7 @@ import { UserModule } from './user/user.module';
 import { ProfileModule } from './profile/profile.module';
 import { RoleModule } from './role/role.module';
 import { AuthModule } from './auth/auth.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -26,9 +27,9 @@ import databaseConfig from './config/configuration';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        return configService.get<ConnectOptions>('database');
-      },
+      useFactory: (configService: ConfigService) => ({
+        ...configService.get<ConnectOptions>('database'),
+      }),
       inject: [ConfigService],
     }),
     MailerModule.forRootAsync({
@@ -51,6 +52,7 @@ import databaseConfig from './config/configuration';
     RoleModule,
     AuthModule,
     ProfileModule,
+    PrismaModule,
   ],
   controllers: [AppController],
   providers: [AppService, MailService, TypeOrmModule],

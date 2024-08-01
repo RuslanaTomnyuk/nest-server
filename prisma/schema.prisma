@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model job_position {
+  company     String @db.VarChar(255)
+  logo        String @db.VarChar(255)
+  newPosition Int    @db.TinyInt
+  featured    Int    @db.TinyInt
+  position    String @db.VarChar(255)
+  role        String @db.VarChar(255)
+  level       String @db.VarChar(255)
+  postedAt    String @db.VarChar(255)
+  contract    String @db.VarChar(255)
+  location    String @db.VarChar(255)
+  id          Int    @id @default(autoincrement())
+  languages   String @db.Text
+  tools       String @db.Text
+}
+
+model role {
+  name            String            @db.VarChar(255)
+  id              Int               @id @default(autoincrement())
+  role_users_user role_users_user[]
+  user_roles_role user_roles_role[]
+}
+
+model role_users_user {
+  roleId Int
+  userId Int
+  user   user @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a88fcb405b56bf2e2646e9d4797")
+  role   role @relation(fields: [roleId], references: [id], onDelete: Cascade, map: "FK_ed6edac7184b013d4bd58d60e54")
+
+  @@id([roleId, userId])
+  @@index([userId], map: "IDX_a88fcb405b56bf2e2646e9d479")
+  @@index([roleId], map: "IDX_ed6edac7184b013d4bd58d60e5")
+}
+
+model user {
+  id                        Int               @id @default(autoincrement())
+  username                  String            @db.VarChar(255)
+  email                     String            @db.VarChar(255)
+  password                  String            @db.VarChar(255)
+  passwordChangeAt          DateTime?         @db.DateTime(0)
+  passwordResetToken        String?           @db.VarChar(255)
+  passwordResetTokenExpires DateTime?         @db.DateTime(0)
+  role_users_user           role_users_user[]
+  user_roles_role           user_roles_role[]
+}
+
+model user_roles_role {
+  userId Int
+  roleId Int
+  role   role @relation(fields: [roleId], references: [id], onDelete: Cascade, map: "FK_4be2f7adf862634f5f803d246b8")
+  user   user @relation(fields: [userId], references: [id], onDelete: Cascade, map: "FK_5f9286e6c25594c6b88c108db77")
+
+  @@id([userId, roleId])
+  @@index([roleId], map: "IDX_4be2f7adf862634f5f803d246b")
+  @@index([userId], map: "IDX_5f9286e6c25594c6b88c108db7")
+}
+
+model user_token {
+  token  String @db.VarChar(255)
+  userId Int    @id @default(autoincrement())
+}
