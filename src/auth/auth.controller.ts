@@ -13,29 +13,28 @@ import {
 } from '@nestjs/common';
 import { Response as ResponseType, Request } from 'express';
 
-import { AuthService } from '../services/auth.service';
-import { UserService } from 'src/user/services/user.service';
+import { AuthService } from './auth.service';
+import { UserService } from '../user/user.service';
 
-import { AuthPayloadDto } from '../dto/auth.dto';
-import { ForgotPasswordDto } from '../dto/forgot-password.dto';
-import { ChangePasswordDto } from '../dto/change-password.dto';
-import { CreateUserDto } from 'src/user/dto/create-user.dto';
-import { UpdateUserProfileDto } from 'src/user/dto/update-user.dto';
+import { AuthPayloadDto } from './dto/auth.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { CreateUserDto } from '../user/dto/create-user.dto';
 
-import { AccessTokenGuard } from 'src/guards/access-token.guard';
-import { RefreshJwtGuard } from 'src/guards/jwt-refresh.guard';
+import { AccessTokenGuard } from '../guards/access-token.guard';
+import { RefreshJwtGuard } from '../guards/jwt-refresh.guard';
 
-import { Public } from 'src/decorators/public.decorator';
-import { GetCurrentUserToken } from 'src/decorators/current-user-token.decorator';
+import { Public } from '../decorators/public.decorator';
+import { GetCurrentUserToken } from '../decorators/current-user-token.decorator';
 
-import { RoleService } from 'src/role/role.service';
+import { RoleService } from '../role/role.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
-    private authService: AuthService,
-    private userService: UserService,
-    private roleService: RoleService,
+    private readonly authService: AuthService,
+    private readonly userService: UserService,
+    private readonly roleService: RoleService,
   ) {}
 
   @Public()
@@ -61,20 +60,6 @@ export class AuthController {
   }
 
   @UseGuards(AccessTokenGuard)
-  @Patch('profile')
-  async updateUserProfile(
-    @Req() req: any,
-    @Res() res: ResponseType,
-    @Body() updateUserDto: UpdateUserProfileDto,
-  ) {
-    return await this.userService.updateUserProfile(
-      req?.user,
-      updateUserDto,
-      res,
-    );
-  }
-
-  @UseGuards(AccessTokenGuard)
   @Patch('change-password')
   async changePassword(
     @Req() req: any,
@@ -84,11 +69,11 @@ export class AuthController {
   }
 
   @Post('forgot-password')
-  async forgotPassword(
+  forgotPassword(
     @Res() res: ResponseType,
     @Body() forgotPasswordDto: ForgotPasswordDto,
   ) {
-    return await this.authService.forgotPassword(forgotPasswordDto.email, res);
+    return this.authService.forgotPassword(forgotPasswordDto.email, res);
   }
 
   @Patch('reset-password/:id/:token')

@@ -8,10 +8,10 @@ import {
   Delete,
   UseGuards,
 } from '@nestjs/common';
-import { JobPositionService } from '../services/job-position.service';
-import { CreateJobPositionDto } from '../dto/create-job-position.dto';
-import { UpdateJobPositionDto } from '../dto/update-job-position.dto';
-import { AccessTokenGuard } from 'src/guards/access-token.guard';
+import { JobPositionService } from './job-position.service';
+import { CreateJobPositionDto } from './dto/create-job-position.dto';
+import { UpdateJobPositionDto } from './dto/update-job-position.dto';
+import { AccessTokenGuard } from '../guards/access-token.guard';
 
 @UseGuards(AccessTokenGuard)
 @Controller('job-list')

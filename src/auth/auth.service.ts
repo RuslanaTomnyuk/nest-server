@@ -6,26 +6,29 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+
 import { Response as ResponseType } from 'express';
 
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 
-import { AuthPayloadDto } from '../dto/auth.dto';
-import { User } from 'src/user/entities/user.entity';
+import { UserService } from '../user/user.service';
+import { UserTokenService } from '../user-token/user-token.service';
+import { MailService } from '../mail/mail.service';
 
-import { UserService } from 'src/user/services/user.service';
-import { UserTokenService } from 'src/user-token/user-token.service';
-import { MailService } from './nodemailer.service';
+import { AuthPayloadDto } from './dto/auth.dto';
+import { User } from '../user/entities/user.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
+    private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly userTokenService: UserTokenService,
     private readonly jwtService: JwtService,
-    private mailService: MailService,
+    private readonly mailService: MailService,
   ) {}
 
   async validateUser({ email, password }: AuthPayloadDto) {
@@ -122,7 +125,7 @@ export class AuthService {
       const resetToken = crypto.randomBytes(32).toString('hex');
       const hashedResetToken = await bcrypt.hash(
         resetToken,
-        +process.env.SAULT,
+        +this.configService.get<string>('SALT'),
       );
 
       user.passwordResetToken = hashedResetToken;
@@ -191,7 +194,10 @@ export class AuthService {
       );
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, +process.env.SALT);
+    const hashedPassword = await bcrypt.hash(
+      newPassword,
+      +this.configService.get<string>('SALT'),
+    );
 
     user.password = hashedPassword;
     user.passwordResetToken = null;
@@ -203,7 +209,7 @@ export class AuthService {
     res.status(200).json({
       status: 200,
       success: true,
-      message: 'Reset Successfully',
+      message: 'The password has been reset successfully',
     });
   }
 
@@ -244,30 +250,22 @@ export class AuthService {
     };
 
     const accessToken = this.jwtService.sign(payload, {
-      secret: process.env.ACCESS_TOKEN_SECRET,
+      secret: this.configService.get<string>('ACCESS_TOKEN_SECRET'),
       expiresIn: '20m',
     });
 
     validRefreshToken &&
-      res
-        .status(200)
-        .setHeader('Authorization', `Bearer ${accessToken}`)
-        // .cookie('auth', refreshToken, {
-        //   secure: true,
-        //   httpOnly: true,
-        //   sameSite: 'strict',
-        // })
-        .json({
-          error: false,
-          accessToken,
-          message: 'New access token created successfully',
-        });
+      res.status(200).setHeader('Authorization', `Bearer ${accessToken}`).json({
+        error: false,
+        accessToken,
+        message: 'New access token created successfully',
+      });
   }
 
   decodedRefreshToken(token: string) {
     try {
       return this.jwtService.verify(token, {
-        secret: process.env.REFRESH_TOKEN_SECRET,
+        secret: this.configService.get<string>('REFRESH_TOKEN_SECRET'),
       });
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
@@ -284,7 +282,7 @@ export class AuthService {
     };
 
     return this.jwtService.sign(payload, {
-      secret: process.env.ACCESS_TOKEN_SECRET,
+      secret: this.configService.get<string>('ACCESS_TOKEN_SECRET'),
       expiresIn: '20m',
     });
   }
@@ -299,7 +297,7 @@ export class AuthService {
     };
 
     return this.jwtService.sign(payload, {
-      secret: process.env.REFRESH_TOKEN_SECRET,
+      secret: this.configService.get<string>('REFRESH_TOKEN_SECRET'),
       expiresIn: '1d',
     });
   }

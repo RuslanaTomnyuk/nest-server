@@ -6,23 +6,21 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+
+import { Repository } from 'typeorm';
 
 import bcrypt from 'bcrypt';
 
-import { MailService } from 'src/auth/services/nodemailer.service';
+import { MailService } from '../mail/mail.service';
 
-import { CreateUserDto } from '../dto/create-user.dto';
-import { ChangePasswordDto } from '../../auth/dto/change-password.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { ChangePasswordDto } from '../auth/dto/change-password.dto';
 
-import { Role } from 'src/role/entities/role.entity';
-import { User } from '../entities/user.entity';
-
-import {
-  UpdateUserParams,
-  UpdateUserProfileParams,
-} from 'src/interfaces/dtoClasses';
+import { Role } from '../role/entities/role.entity';
+import { User } from './entities/user.entity';
 
 @Injectable()
 export class UserService {
@@ -31,7 +29,8 @@ export class UserService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
-    private mailService: MailService,
+    private readonly mailService: MailService,
+    private readonly configService: ConfigService,
   ) {}
 
   async createUser(userDetails: CreateUserDto, userRole: Role) {
@@ -68,7 +67,9 @@ export class UserService {
       roles: [userRole],
     });
 
-    await this.userRepository.save(newUser);
+    const { roles, ...createdUser } = newUser;
+
+    await this.userRepository.save(createdUser);
 
     try {
       await this.mailService.createUserNotification(
@@ -116,7 +117,11 @@ export class UserService {
     return await this.userRepository.save(user);
   }
 
-  async updateUser(id: number, updateUserDetails: UpdateUserParams) {
+  async updateProfile(id: number, updateUserDetails: Partial<User>) {
+    return await this.userRepository.update({ id }, { ...updateUserDetails });
+  }
+
+  async updateUser(id: number, updateUserDetails: UpdateUserDto) {
     const userExists = await this.userRepository.findOneBy({ id });
 
     if (!userExists) {
@@ -140,97 +145,6 @@ export class UserService {
     }
 
     return await this.userRepository.update({ id }, { ...updateUserDetails });
-  }
-
-  async updateUserProfile(
-    user: User,
-    updateUserDetails: UpdateUserProfileParams,
-    res,
-  ) {
-    if (
-      !updateUserDetails.username ||
-      !updateUserDetails.email ||
-      !updateUserDetails.password
-    ) {
-      throw new BadRequestException(
-        'Username, email and password are required.',
-      );
-    }
-    const userExists = await this.findUserById(user.id);
-
-    if (!userExists) {
-      throw new HttpException(
-        'We could not find the user with a given email',
-        HttpStatus.NOT_FOUND,
-      );
-    }
-    const isPasswordValid = await bcrypt.compare(
-      updateUserDetails.password,
-      userExists.password,
-    );
-
-    if (!isPasswordValid) {
-      throw new HttpException(
-        'The current password you provided is not valid!',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    if (isPasswordValid && updateUserDetails.email !== userExists.email) {
-      const emailExists = await this.userRepository.findOneBy({
-        email: updateUserDetails.email,
-      });
-
-      if (emailExists) {
-        throw new HttpException(
-          'That email is already registered',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    }
-
-    const hashedPassword = await bcrypt.hash(
-      updateUserDetails.password,
-      +process.env.SALT,
-    );
-
-    const role = 'Admin';
-
-    const hasEmailChanged = updateUserDetails.email !== userExists.email;
-
-    if (role === 'Admin') {
-      isPasswordValid &&
-        (await this.userRepository.update(
-          { id: user.id },
-          {
-            password: hashedPassword,
-            username: updateUserDetails.username,
-            email: updateUserDetails.email,
-          },
-        ));
-
-      try {
-        if (hasEmailChanged) {
-          await this.mailService.changeEmailNotification(
-            updateUserDetails.username,
-            updateUserDetails.email,
-          );
-        }
-      } catch (error) {
-        console.log('Error while sending email', error);
-      }
-
-      res.status(200).json({
-        status: 200,
-        error: false,
-        message: 'User updated Successfully',
-      });
-    } else {
-      throw new HttpException(
-        'Forbidden: Only Admin users can update the user!',
-        HttpStatus.FORBIDDEN,
-      );
-    }
   }
 
   async changePassword(user: User, changePasswordDto: ChangePasswordDto) {
@@ -257,7 +171,10 @@ export class UserService {
       );
     }
 
-    const hashNewPassword = await bcrypt.hash(password, +process.env.SALT);
+    const hashNewPassword = await bcrypt.hash(
+      password,
+      +this.configService.get<string>('SALT'),
+    );
 
     const role = 'Admin';
     if (role === 'Admin') {

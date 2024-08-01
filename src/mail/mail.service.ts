@@ -1,23 +1,17 @@
-import * as nodemailer from 'nodemailer';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class MailService {
-  private transporter: nodemailer.Transporter;
-
-  constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      auth: {
-        user: 'glen.mertz@ethereal.email',
-        pass: 'DwxzZ6zycGsRGj7QBV',
-      },
-    });
-  }
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly mailerService: MailerService,
+  ) {}
 
   async sendPasswordResetEmail(id: number, email: string, token: string) {
-    const resetPasswordLink = `${process.env.CLIENT_URL}/auth/reset-password/${id}/${token}`;
+    const resetPasswordLink = `${this.configService.get<string>('CLIENT_URL')}/auth/reset-password/${id}/${token}`;
+
     const mailInfo = {
       to: email,
       subject: 'Reset Password Link ✔',
@@ -27,7 +21,7 @@ export class MailService {
            Thanks`,
     };
 
-    await this.transporter.sendMail(mailInfo);
+    await this.mailerService.sendMail(mailInfo);
   }
 
   async changeEmailNotification(username: string, email: string) {
@@ -39,7 +33,7 @@ export class MailService {
            Thank you!`,
     };
 
-    await this.transporter.sendMail(mailInfo);
+    await this.mailerService.sendMail(mailInfo);
   }
 
   async createUserNotification(username: string, email: string) {
@@ -53,6 +47,6 @@ export class MailService {
            Thanks`,
     };
 
-    await this.transporter.sendMail(mailInfo);
+    await this.mailerService.sendMail(mailInfo);
   }
 }

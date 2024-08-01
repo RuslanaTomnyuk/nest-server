@@ -14,3 +14,16 @@ export class CreateUserDto {
 
   role: string;
 }
+
+export class CreateUserParams {
+  @IsNotEmpty()
+  username: string;
+
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  password: string;
+
+  role: string;
+}

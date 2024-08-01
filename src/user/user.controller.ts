@@ -10,10 +10,10 @@ import {
   Req,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { AccessTokenGuard } from 'src/guards/access-token.guard';
+import { AccessTokenGuard } from '../guards/access-token.guard';
 
-import { UserService } from '../services/user.service';
-import { UpdateUserDto } from '../dto/update-user.dto';
+import { UserService } from './user.service';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @UseGuards(AccessTokenGuard)
 @Controller('user')
@@ -32,8 +32,8 @@ export class UserController {
   }
 
   @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    return await this.userService.findUserById(id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.userService.findUserById(id);
   }
 
   @Patch(':id')

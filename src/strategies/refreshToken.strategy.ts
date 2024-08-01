@@ -1,9 +1,11 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
+
 import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { AuthService } from '../services/auth.service';
-import { UserTokenService } from 'src/user-token/user-token.service';
+import { AuthService } from '../auth/auth.service';
+import { UserTokenService } from '../user-token/user-token.service';
 
 @Injectable()
 export class RefreshTokenStrategy extends PassportStrategy(
@@ -13,13 +15,14 @@ export class RefreshTokenStrategy extends PassportStrategy(
   constructor(
     private readonly authService: AuthService,
     private readonly userTokenService: UserTokenService,
+    private readonly configService: ConfigService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         RefreshTokenStrategy.extractJWT,
       ]),
       ignoreExpiration: false,
-      secretOrKey: process.env.REFRESH_TOKEN_SECRET,
+      secretOrKey: configService.get<string>('REFRESH_TOKEN_SECRET'),
       passReqToCallback: true,
     });
   }

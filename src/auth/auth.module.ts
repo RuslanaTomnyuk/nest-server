@@ -1,26 +1,29 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AuthController } from './controllers/auth.controller';
-import { AuthService } from './services/auth.service';
-import { UserService } from 'src/user/services/user.service';
-import { MailService } from './services/nodemailer.service';
+import { AccessTokenStrategy } from '../strategies/accessToken.strategy';
+import { RefreshTokenStrategy } from '../strategies/refreshToken.strategy';
 
-import { User } from 'src/user/entities/user.entity';
-import { UserToken } from 'src/user-token/entities/user-token.entity';
+import { AuthController } from './auth.controller';
 
-import { UserModule } from 'src/user/user.module';
-import { UserTokenModule } from 'src/user-token/user-token.module';
+import { UserModule } from '../user/user.module';
+import { UserTokenModule } from '../user-token/user-token.module';
 
-import { UserTokenService } from 'src/user-token/user-token.service';
-import { AccessTokenStrategy } from './strategies/accessToken.strategy';
-import { RefreshTokenStrategy } from './strategies/refreshToken.strategy';
+import { AuthService } from './auth.service';
+import { UserService } from '../user/user.service';
+import { MailService } from '../mail/mail.service';
+import { UserTokenService } from '../user-token/user-token.service';
+
+import { User } from '../user/entities/user.entity';
+import { UserToken } from '../user-token/entities/user-token.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, UserToken]),
+    ConfigModule,
     PassportModule,
     JwtModule.register({}),
     UserModule,
@@ -35,6 +38,6 @@ import { RefreshTokenStrategy } from './strategies/refreshToken.strategy';
     RefreshTokenStrategy,
     MailService,
   ],
-  exports: [AuthService, MailService],
+  exports: [AuthService],
 })
 export class AuthModule {}

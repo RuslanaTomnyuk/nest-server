@@ -4,12 +4,16 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 
 @Injectable()
 export class AccessTokenGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private jwtService: JwtService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
@@ -20,7 +24,7 @@ export class AccessTokenGuard implements CanActivate {
         throw new UnauthorizedException('There is no token!');
       }
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.ACCESS_TOKEN_SECRET,
+        secret: this.configService.get<string>('ACCESS_TOKEN_SECRET'),
       });
 
       request['user'] = payload;
