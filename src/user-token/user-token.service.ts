@@ -1,39 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Prisma } from '@prisma/client';
+
+import { PrismaService } from '../prisma/prisma.service';
 
 import { CreateUserTokenDto } from './dto/create-user-token.dto';
-import { UpdateUserTokenDto } from './dto/update-user-token.dto';
-import { UserToken } from './entities/user-token.entity';
 
 @Injectable()
 export class UserTokenService {
-  constructor(
-    @InjectRepository(UserToken)
-    private readonly userTokenRepository: Repository<UserToken>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   create(createUserTokenDto: CreateUserTokenDto) {
-    return this.userTokenRepository.save(createUserTokenDto);
+    return this.prisma.user_token.create({
+      data: createUserTokenDto,
+    });
   }
 
   findAll() {
-    return this.userTokenRepository.find();
+    return this.prisma.user_token.findMany();
   }
 
   findOneById(id: number) {
-    return this.userTokenRepository.findOneBy({ userId: id });
+    return this.prisma.user_token.findUnique({
+      where: { userId: id },
+    });
   }
 
   findOneBy(token: string) {
-    return this.userTokenRepository.findOneBy({ token });
+    return this.prisma.user_token.findFirst({
+      where: { token },
+    });
   }
 
-  update(id: number, updateUserTokenDto: UpdateUserTokenDto) {
-    return this.userTokenRepository.update(id, { ...updateUserTokenDto });
+  update(id: number, updateUserTokenDto: Prisma.user_tokenUpdateInput) {
+    return this.prisma.user_token.update({
+      where: {
+        userId: +id,
+      },
+      data: updateUserTokenDto,
+    });
   }
 
   remove(id: number) {
-    return this.userTokenRepository.delete(id);
+    return this.prisma.user_token.delete({
+      where: { userId: +id },
+    });
   }
 }

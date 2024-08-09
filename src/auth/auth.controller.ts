@@ -40,8 +40,7 @@ export class AuthController {
   @Public()
   @Post('register')
   async registerUser(@Body() createUserDto: CreateUserDto) {
-    const userRole = await this.roleService.findUserRole(createUserDto.role);
-    return await this.userService.createUser(createUserDto, userRole);
+    return await this.userService.createUser(createUserDto);
   }
 
   @Public()
@@ -65,7 +64,7 @@ export class AuthController {
     @Req() req: any,
     @Body() changePasswordDto: ChangePasswordDto,
   ) {
-    return await this.userService.changePassword(req?.user, changePasswordDto);
+    return await this.authService.changePassword(req?.user, changePasswordDto);
   }
 
   @Post('forgot-password')

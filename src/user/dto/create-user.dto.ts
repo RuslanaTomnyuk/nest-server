@@ -12,18 +12,6 @@ export class CreateUserDto {
   @IsNotEmpty()
   confirmPassword: string;
 
-  role: string;
-}
-
-export class CreateUserParams {
   @IsNotEmpty()
-  username: string;
-
-  @IsEmail()
-  email: string;
-
-  @IsNotEmpty()
-  password: string;
-
   role: string;
 }

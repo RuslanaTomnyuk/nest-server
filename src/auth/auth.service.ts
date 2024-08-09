@@ -8,23 +8,26 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { user } from '@prisma/client';
 
 import { Response as ResponseType } from 'express';
 
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 
+import { PrismaService } from '../prisma/prisma.service';
 import { UserService } from '../user/user.service';
 import { UserTokenService } from '../user-token/user-token.service';
 import { MailService } from '../mail/mail.service';
 
 import { AuthPayloadDto } from './dto/auth.dto';
-import { User } from '../user/entities/user.entity';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly configService: ConfigService,
+    private readonly prisma: PrismaService,
     private readonly userService: UserService,
     private readonly userTokenService: UserTokenService,
     private readonly jwtService: JwtService,
@@ -44,7 +47,6 @@ export class AuthService {
       if (findUser && authenticated) {
         const {
           password,
-          roles,
           passwordChangeAt,
           passwordResetToken,
           passwordResetTokenExpires,
@@ -85,10 +87,17 @@ export class AuthService {
     } = user;
 
     if (isPasswordValid) {
+      const userTokenExist = await this.userTokenService.findOneById(user.id);
+
+      if (userTokenExist) {
+        await this.userTokenService.remove(userTokenExist.userId);
+      }
+
       await this.userTokenService.create({
         userId: user.id,
         token: refreshToken,
       });
+
       response
         .status(200)
         .setHeader('Authorization', `Bearer ${accessToken}`)
@@ -111,6 +120,68 @@ export class AuthService {
         message:
           'Invalid email or password. Please try again with the correct credentials.',
       });
+    }
+  }
+
+  async changePassword(user: user, changePasswordDto: ChangePasswordDto) {
+    const { currentPassword, password } = changePasswordDto;
+
+    const userExists = await this.prisma.user.findUnique({
+      where: { id: user.id },
+    });
+
+    if (!userExists) {
+      throw new HttpException(
+        'We could not find the user with a given email',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(
+      currentPassword,
+      userExists.password,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new HttpException(
+        'The current password you provided is not valid!',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const hashNewPassword = await bcrypt.hash(
+      password,
+      +this.configService.get<string>('SALT'),
+    );
+
+    const { roleId } = await this.prisma.user_roles_role.findUnique({
+      where: {
+        userId: userExists.id,
+      },
+    });
+
+    const role = await this.prisma.role.findUnique({
+      where: {
+        id: roleId,
+      },
+    });
+
+    if (role.name === 'Admin') {
+      isCurrentPasswordValid &&
+        (await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            password: hashNewPassword,
+            email: user.email,
+          },
+        }));
+
+      throw new HttpException('User updated Successfully', HttpStatus.CREATED);
+    } else {
+      throw new HttpException(
+        'Forbidden: Only Admin users can update the user!',
+        HttpStatus.FORBIDDEN,
+      );
     }
   }
 
@@ -148,7 +219,7 @@ export class AuthService {
       } catch (error) {
         user.passwordResetToken = null;
         user.passwordResetTokenExpires = null;
-        await this.userService.saveUser(user);
+        await this.userService.updateUser(user.id, { ...user });
         console.log('Failed sending email', error);
       }
     } catch (error) {
@@ -225,7 +296,8 @@ export class AuthService {
     const userLocalTime = new Date(
       utcDate.getTime() - userTimezoneOffset * 60000,
     );
-    const formattedDate = new Intl.DateTimeFormat('en-US', {
+
+    return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -234,8 +306,6 @@ export class AuthService {
       second: 'numeric',
       timeZoneName: 'short',
     }).format(userLocalTime);
-
-    return formattedDate;
   }
 
   async refreshToken(user, res) {
@@ -272,7 +342,7 @@ export class AuthService {
     }
   }
 
-  async createAccessToken(user: User) {
+  async createAccessToken(user) {
     const payload = {
       id: user.id,
       email: user.email,
@@ -283,11 +353,11 @@ export class AuthService {
 
     return this.jwtService.sign(payload, {
       secret: this.configService.get<string>('ACCESS_TOKEN_SECRET'),
-      expiresIn: '20m',
+      expiresIn: '4h',
     });
   }
 
-  async createRefreshToken(user: User) {
+  async createRefreshToken(user) {
     const payload = {
       id: user.id,
       email: user.email,

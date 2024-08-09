@@ -1,32 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Role } from './entities/role.entity';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class RoleService {
-  constructor(
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   createRole(createUserRoleDto: { id: number; name: string }) {
-    return this.roleRepository.save(createUserRoleDto);
+    return this.prisma.role.create({ data: createUserRoleDto });
   }
 
   findAllRoles() {
-    return this.roleRepository.find();
-  }
-
-  findUserRole(role: string) {
-    return this.roleRepository.findOneBy({ name: role });
+    return this.prisma.role.findMany();
   }
 
   update(id: number, updateUserRoleDto: any) {
-    return this.roleRepository.update(id, updateUserRoleDto);
+    return this.prisma.role.update({
+      where: { id },
+      data: updateUserRoleDto,
+    });
   }
 
   remove(id: number) {
-    return this.roleRepository.delete({ id });
+    return this.prisma.role.delete({
+      where: { id },
+    });
   }
 }

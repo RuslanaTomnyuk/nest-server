@@ -1,75 +1,70 @@
 import {
   BadRequestException,
-  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-
-import { Repository } from 'typeorm';
+import { Prisma } from '@prisma/client';
 
 import bcrypt from 'bcrypt';
 
 import { MailService } from '../mail/mail.service';
+import { PrismaService } from '../prisma/prisma.service';
 
-import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ChangePasswordDto } from '../auth/dto/change-password.dto';
-
-import { Role } from '../role/entities/role.entity';
-import { User } from './entities/user.entity';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UserService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
+    private readonly prisma: PrismaService,
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
   ) {}
 
-  async createUser(userDetails: CreateUserDto, userRole: Role) {
-    const { username, email, password, confirmPassword } = userDetails;
+  async createUser(userDetails: CreateUserDto) {
+    const { username, email, password, role } = userDetails;
 
-    if (!username || !email || !password || !confirmPassword || !userRole) {
+    if (!username || !email || !password || !role) {
       throw new BadRequestException('All fields are required');
     }
 
-    const userExists = await this.findUserByEmail(email);
+    const userExists = await this.prisma.user.findUnique({
+      where: { email },
+    });
 
     if (userExists) {
-      throw new BadRequestException('Email already in use');
-    }
-
-    if (userRole.name !== 'Admin') {
-      throw new ForbiddenException();
-    }
-
-    if (password !== confirmPassword) {
-      throw new BadRequestException(
-        'Password and ConfirmPassword do not match!',
-      );
+      throw new BadRequestException('Email is already in use');
     }
 
     const hashedPassword = await bcrypt.hash(password, +process.env.SALT);
 
-    await this.roleRepository.save(userRole);
-
-    const newUser = this.userRepository.create({
+    const newUser = await this.saveUser({
       username,
       email,
       password: hashedPassword,
-      roles: [userRole],
     });
 
-    const { roles, ...createdUser } = newUser;
+    let userRole = await this.prisma.role.findUnique({
+      where: { id: newUser.id },
+    });
 
-    await this.userRepository.save(createdUser);
+    if (!userRole) {
+      userRole = await this.prisma.role.create({
+        data: {
+          name: role,
+        },
+      });
+    }
+
+    await this.prisma.user_roles_role.create({
+      data: {
+        userId: newUser.id,
+        roleId: userRole.id,
+      },
+    });
 
     try {
       await this.mailService.createUserNotification(
@@ -91,38 +86,36 @@ export class UserService {
     };
   }
 
-  async findAllUsers() {
-    return await this.userRepository.find({
-      relations: {
-        roles: true,
-      },
-    });
+  findAllUsers() {
+    return this.prisma.user.findMany();
   }
 
   async findUserById(id: number) {
-    const userExists = await this.userRepository.findOneBy({ id });
+    const userExists = await this.prisma.user.findUnique({
+      where: { id },
+    });
 
     if (!userExists) {
       throw new NotFoundException(`We could not find a user #${id}.`);
     }
 
-    return await this.userRepository.findOneBy({ id });
+    return userExists;
   }
 
-  async findUserByEmail(email: string) {
-    return await this.userRepository.findOneBy({ email });
+  findUserByEmail(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email },
+    });
   }
 
-  async saveUser(user: User) {
-    return await this.userRepository.save(user);
-  }
-
-  async updateProfile(id: number, updateUserDetails: Partial<User>) {
-    return await this.userRepository.update({ id }, { ...updateUserDetails });
+  saveUser(user: Prisma.userCreateInput) {
+    return this.prisma.user.create({ data: user });
   }
 
   async updateUser(id: number, updateUserDetails: UpdateUserDto) {
-    const userExists = await this.userRepository.findOneBy({ id });
+    const userExists = await this.prisma.user.findUnique({
+      where: { id },
+    });
 
     if (!userExists) {
       throw new HttpException(
@@ -132,8 +125,8 @@ export class UserService {
     }
 
     if (updateUserDetails.email !== userExists.email) {
-      const emailExists = await this.userRepository.findOneBy({
-        email: updateUserDetails.email,
+      const emailExists = await this.prisma.user.findUnique({
+        where: { email: updateUserDetails.email },
       });
 
       if (emailExists) {
@@ -144,65 +137,23 @@ export class UserService {
       }
     }
 
-    return await this.userRepository.update({ id }, { ...updateUserDetails });
-  }
-
-  async changePassword(user: User, changePasswordDto: ChangePasswordDto) {
-    const { currentPassword, password } = changePasswordDto;
-
-    const userExists = await this.findUserById(user.id);
-
-    if (!userExists) {
-      throw new HttpException(
-        'We could not find the user with a given email',
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    const isCurrentPasswordValid = await bcrypt.compare(
-      currentPassword,
-      userExists.password,
-    );
-
-    if (!isCurrentPasswordValid) {
-      throw new HttpException(
-        'The current password you provided is not valid!',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    const hashNewPassword = await bcrypt.hash(
-      password,
-      +this.configService.get<string>('SALT'),
-    );
-
-    const role = 'Admin';
-    if (role === 'Admin') {
-      isCurrentPasswordValid &&
-        (await this.userRepository.update(
-          { id: user.id },
-          {
-            password: hashNewPassword,
-            email: user.email,
-          },
-        ));
-
-      throw new HttpException('User updated Successfully', HttpStatus.CREATED);
-    } else {
-      throw new HttpException(
-        'Forbidden: Only Admin users can update the user!',
-        HttpStatus.FORBIDDEN,
-      );
-    }
+    return await this.prisma.user.update({
+      where: { id },
+      data: { ...updateUserDetails },
+    });
   }
 
   async removeUser(id: number) {
-    const userExists = await this.userRepository.findOneBy({ id });
+    const userExists = await this.prisma.user.findUnique({
+      where: { id },
+    });
 
     if (!userExists) {
       throw new NotFoundException(`We could not find a user #${id}.`);
     }
 
-    return await this.userRepository.delete({ id });
+    return await this.prisma.user.delete({
+      where: { id },
+    });
   }
 }

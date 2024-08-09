@@ -1,9 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailerModule } from '@nestjs-modules/mailer';
-import { TypeOrmModule } from '@nestjs/typeorm';
-
-import { ConnectOptions } from 'typeorm';
 
 import { UserTokenModule } from './user-token/user-token.module';
 import { JobPositionModule } from './job-position/job-position.module';
@@ -25,13 +22,7 @@ import databaseConfig from './config/configuration';
       isGlobal: true,
       load: [databaseConfig],
     }),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        ...configService.get<ConnectOptions>('database'),
-      }),
-      inject: [ConfigService],
-    }),
+    PrismaModule,
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -52,9 +43,8 @@ import databaseConfig from './config/configuration';
     RoleModule,
     AuthModule,
     ProfileModule,
-    PrismaModule,
   ],
   controllers: [AppController],
-  providers: [AppService, MailService, TypeOrmModule],
+  providers: [AppService, MailService],
 })
 export class AppModule {}

@@ -8,24 +8,22 @@ import { ConfigService } from '@nestjs/config';
 
 import bcrypt from 'bcrypt';
 
+import { PrismaService } from '../prisma/prisma.service';
 import { UserService } from '../user/user.service';
 import { MailService } from '../mail/mail.service';
+
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
-import { User } from '../user/entities/user.entity';
 
 @Injectable()
 export class ProfileService {
   constructor(
+    private readonly prisma: PrismaService,
     private readonly userService: UserService,
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
   ) {}
 
-  async updateProfile(
-    user: User,
-    updateUserDetails: UpdateUserProfileDto,
-    res,
-  ) {
+  async updateProfile(user, updateUserDetails: UpdateUserProfileDto, res) {
     if (
       !updateUserDetails.username ||
       !updateUserDetails.email ||
@@ -69,23 +67,29 @@ export class ProfileService {
       }
     }
 
-    const hashedPassword = await bcrypt.hash(
-      updateUserDetails.password,
-      +this.configService.get<string>('SALT'),
-    );
+    const { roleId } = await this.prisma.user_roles_role.findUnique({
+      where: {
+        userId: userExists.id,
+      },
+    });
 
-    const role = 'Admin';
+    const role = await this.prisma.role.findUnique({
+      where: {
+        id: roleId,
+      },
+    });
 
-    const hasEmailChanged = updateUserDetails.email !== userExists.email;
-
-    if (role === 'Admin') {
+    if (role.name === 'Admin') {
       isPasswordValid &&
-        (await this.userService.updateProfile(user.id, {
-          password: hashedPassword,
-          username: updateUserDetails.username,
-          email: updateUserDetails.email,
+        (await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            username: updateUserDetails.username,
+            email: updateUserDetails.email,
+          },
         }));
 
+      const hasEmailChanged = updateUserDetails.email !== userExists.email;
       try {
         if (hasEmailChanged) {
           await this.mailService.changeEmailNotification(

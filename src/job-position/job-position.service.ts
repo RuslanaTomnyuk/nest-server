@@ -1,29 +1,26 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
 
-import { CreateJobPositionDto } from './dto/create-job-position.dto';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import { UpdateJobPositionDto } from './dto/update-job-position.dto';
-import { JobPosition } from './entities/job-position.entity';
 
 @Injectable()
 export class JobPositionService {
-  constructor(
-    @InjectRepository(JobPosition)
-    private jobPositionRepository: Repository<JobPosition>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  create(createJobPositionDto: CreateJobPositionDto) {
-    return this.jobPositionRepository.create(createJobPositionDto);
+  create(createJobPositionDto: Prisma.job_positionCreateInput) {
+    return this.prisma.job_position.create({
+      data: createJobPositionDto,
+    });
   }
 
   findJobList() {
-    return this.jobPositionRepository.find();
+    return this.prisma.job_position.findMany();
   }
 
   findOneById(id: number) {
     try {
-      return this.jobPositionRepository.findOneOrFail({
+      return this.prisma.job_position.findUnique({
         where: { id },
       });
     } catch (error) {
@@ -36,10 +33,15 @@ export class JobPositionService {
   }
 
   updateJobPosition(id: number, updateJobPositionDto: UpdateJobPositionDto) {
-    return this.jobPositionRepository.update(id, updateJobPositionDto);
+    return this.prisma.job_position.update({
+      where: { id },
+      data: updateJobPositionDto,
+    });
   }
 
   remove(id: number) {
-    return this.jobPositionRepository.delete(id);
+    return this.prisma.job_position.delete({
+      where: { id },
+    });
   }
 }

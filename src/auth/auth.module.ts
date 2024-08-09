@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AccessTokenStrategy } from '../strategies/accessToken.strategy';
 import { RefreshTokenStrategy } from '../strategies/refreshToken.strategy';
@@ -15,14 +14,11 @@ import { UserTokenModule } from '../user-token/user-token.module';
 import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
 import { MailService } from '../mail/mail.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { UserTokenService } from '../user-token/user-token.service';
-
-import { User } from '../user/entities/user.entity';
-import { UserToken } from '../user-token/entities/user-token.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, UserToken]),
     ConfigModule,
     PassportModule,
     JwtModule.register({}),
@@ -37,6 +33,7 @@ import { UserToken } from '../user-token/entities/user-token.entity';
     AccessTokenStrategy,
     RefreshTokenStrategy,
     MailService,
+    PrismaService,
   ],
   exports: [AuthService],
 })

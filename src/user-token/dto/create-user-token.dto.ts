@@ -1,9 +1,9 @@
-import { Column, PrimaryGeneratedColumn } from 'typeorm';
+import { IsNotEmpty } from 'class-validator';
 
 export class CreateUserTokenDto {
-  @PrimaryGeneratedColumn()
+  @IsNotEmpty()
   userId: number;
 
-  @Column()
+  @IsNotEmpty()
   token: string;
 }
